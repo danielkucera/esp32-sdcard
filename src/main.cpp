@@ -322,7 +322,8 @@ void set_password(){
       return;
     }
     password[i] = x;
-    Serial.printf(" byte value: %02X\n", x);
+    Serial.print(" byte value: ");
+    Serial.print((char)x, HEX);
   }
   Serial.println();
 
