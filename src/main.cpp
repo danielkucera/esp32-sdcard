@@ -43,13 +43,14 @@ void samsung_unlock_cid_write(){
   Serial.printf("exit vendor %d\n", ret);
   
 }
+*/
 
 void printDirectory(File dir, int numTabs) {
   while (true) {
 
     File entry =  dir.openNextFile();
     if (! entry) {
-      Serial.printf("no more files\n");
+      Serial.println("no more files");
       // no more files
       break;
     }
@@ -70,7 +71,6 @@ void printDirectory(File dir, int numTabs) {
 }
 
 void setup() {
-  int ret;
   // Open serial communications and wait for port to open:
   Serial.begin(115200);
 
@@ -92,7 +92,8 @@ void init(){
   if ((!ret) && card.errorCode() == SD_CARD_ERROR_LOCKED) {
     Serial.println("Card is locked. Unlocking.");
     ret = card.lockUnlockCard(0, 16, password);
-    Serial.printf("Unlock result %d\n", ret);
+    Serial.print("Unlock result");
+    Serial.println(ret);
     ret = card.init(SPI_HALF_SPEED, chipSelect);
   }
 
@@ -173,11 +174,11 @@ void show_cid(){
   cid = (cid_t*)malloc(sizeof(cid_t));
   card.readCID(cid);
 
-  Serial.printf("Card CID: ");
+  Serial.print("Card CID: ");
   for (int i=0; i<16; i++){
-    Serial.printf("%02X ", ((unsigned char*)cid)[i]);  
+    Serial.print(((unsigned char*)cid)[i], HEX);
   }
-  Serial.println("");
+  Serial.println();
 }
 
 void unlock(){
@@ -204,17 +205,18 @@ void delete_devid(){
   root.openRoot(volume);
 
   while (root.readDir(&p) > 0) {
-    Serial.printf("%s\n", p.name);
+    Serial.println((char*)(p.name));
 
     if(!memcmp("NAVPSF~1", p.name, 8)){
-      Serial.printf("%s found\n", p.name);
+      Serial.println("NAVPSF~1 found");
 
       uint16_t index = root.curPosition() / 32 - 1;
       SdFile s;
 
       if (s.open(root, index, O_READ)) {
         uint8_t ret = s.remove(&s, "deviceid");
-        Serial.printf("deviceid remove ret: %d\n", ret);
+        Serial.print("deviceid remove ret:");
+        Serial.println(ret);
       }
     }
   }
@@ -259,7 +261,7 @@ void read_version(){
 void print_password(){
   Serial.print("Password: ");
   for (int i=0; i<16; i++){
-    Serial.printf("%02X ", password[i]);
+    Serial.print(password[i], HEX);
   }
   Serial.println();
 }
@@ -270,7 +272,7 @@ int halfchar() {
   while (((c = Serial.read()) == -1) || (c == ' ') || (c == '\n')){
   }
 
-  Serial.printf("%c", c);
+  Serial.print((char)c);
 
   if ((c >= '0') && (c <= '9')) {
     return c - '0';
@@ -306,7 +308,6 @@ int read_hex(){
 }
 
 void set_password(){
-  char ch;
   Serial.print("Input password as 16 hex pairs: \n");
   for (int i=0; i<16; i++){
     int x = read_hex();
