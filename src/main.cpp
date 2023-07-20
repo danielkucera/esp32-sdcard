@@ -8,6 +8,19 @@ Sd2Card card;
 SdVolume volume;
 SdFile root;
 
+uint16_t // Returns Calculated CRC value
+CalculateCRC16(
+    uint16_t crc,      // Seed for CRC calculation
+    const void *c_ptr, // Pointer to byte array to perform CRC on
+    size_t len);
+
+#ifdef WATCH_ENABLE
+#include "sd_rx.pio.h"
+
+static PIO pio;
+static uint sm;
+#endif
+
 #define CID_SIZE 16
 #define PROGRAM_CID_OPCODE 26
 #define SAMSUNG_VENDOR_OPCODE 62
@@ -17,10 +30,10 @@ SdFile root;
 #define CLR_PWD 2
 #define SET_PWD 1
 
-const int chipSelect = 5;
-
 //sandisk microsd 16GB;  35344534231364780CE77BEDD1565F
 uint8_t password[] = { 0x4c, 0xa4, 0x32, 0xa0, 0x9c, 0xcc, 0x71, 0x1a, 0x5a, 0xfe, 0xf8, 0xc5, 0x60, 0xe3, 0xfd, 0x54 };
+
+uint8_t new_password[20];
 
 //cina SD 16GB; E7EH9325LX 9F5449202020202020345BA816BD3
 //uint8_t password[] = { 0x8d, 0x2f, 0x70, 0x83, 0x1e, 0x9f, 0x81, 0xd9, 0xf2, 0xff, 0xf4, 0xf8, 0x0e, 0x27, 0x08, 0x14 };
@@ -76,31 +89,22 @@ void printDirectory(File dir, int numTabs) {
   }
 }
 
-void setup() {
-  // Open serial communications and wait for port to open:
-  Serial.begin(115200);
-
-  /*
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for native USB port only
-  }
-  */
-}
-
-void init(){
+void card_init(){
   int ret;
   Serial.print("\nInitializing SD card...");
 
+  pinMode(CHIP_SELECT, OUTPUT);
+
   // we'll use the initialization code from the utility libraries
   // since we're just testing if the card is working!
-  ret = card.init(SPI_HALF_SPEED, chipSelect);
+  ret = card.init(SPI_HALF_SPEED, CHIP_SELECT);
 
   if ((!ret) && card.errorCode() == SD_CARD_ERROR_LOCKED) {
     Serial.println("Card is locked. Unlocking.");
     ret = card.lockUnlockCard(0, 16, password);
     Serial.print("Unlock result");
     Serial.println(ret);
-    ret = card.init(SPI_HALF_SPEED, chipSelect);
+    ret = card.init(SPI_HALF_SPEED, CHIP_SELECT);
   }
 
   if (!ret) {
@@ -330,13 +334,84 @@ void set_password(){
   print_password();
 }
 
+void watch_password(){
+  SPI.end();
+
+  pinMode(MOSI, INPUT);
+  digitalWrite(MOSI, 0);
+  
+  pinMode(MISO, INPUT);
+  digitalWrite(MISO, 0);
+
+  pinMode(SCK, INPUT);
+  digitalWrite(SCK, 0);
+
+  pinMode(CHIP_SELECT, INPUT);
+  digitalWrite(CHIP_SELECT, 0);
+
+  Serial.println("Waiting for startbit");
+
+#ifdef WATCH_ENABLE
+  #define PIO_RX_PIN 16
+
+  pio = pio0;
+  sm = 0;
+  uint offset = pio_add_program(pio, &sd_rx_program);
+  sd_rx_program_init(pio, sm, offset, PIO_RX_PIN);
+#endif
+
+/*
+  // not fast enough :/
+  attachInterrupt(SCK, isr, RISING);
+
+  while(digitalRead(MISO)); //wait for start bit
+
+  while(!digitalRead(MISO)); //wait for start bit
+
+  while(digitalRead(MISO)); //wait for start bit
+
+  while(!digitalRead(MISO)); //wait for start bit
+
+  while(digitalRead(MISO)); //wait for start bit
+
+  for(int i=0; i<8*32; i++){
+    while(!digitalRead(SCK)); //wait for rising
+
+    int val = digitalRead(MISO);
+    digitalWrite(TEST_PIN, !val);
+    Serial.print(val);
+    Serial.print(" ");
+    while(digitalRead(SCK));
+
+  }
+*/
+
+
+}
+
+void setup() {
+  // Open serial communications and wait for port to open:
+  Serial.begin(115200);
+
+  /*
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for native USB port only
+  }
+  */
+watch_password();
+}
+
+void move_password(){
+  memcpy(password, new_password+2, 16);
+}
+
 void loop(void) {
   if (Serial.available() > 0) {
     int cmd = Serial.read();
 
     switch (cmd){
       case 'i':
-        init();
+        card_init();
         break;
       case 'l':
         lock();
@@ -359,8 +434,57 @@ void loop(void) {
       case 'f':
         list_files();
         break;
+      case 'w':
+        watch_password();
+        break;
+      case 'm':
+        move_password();
+        break;
       default:
         Serial.println("Unknown command");
     }
   }
+
+#ifdef WATCH_ENABLE
+  static int password_part = -1;
+
+  while(!pio_sm_is_rx_fifo_empty(pio, sm)) {
+      uint32_t c = sd_rx_program_getc(pio, sm);
+
+      if ((password_part < 0) && ((c & 0xffff0000) == 0x00100000)){
+        password_part = 0;
+        Serial.println("password start seen");
+      }
+
+      if (password_part > -1){
+        new_password[password_part+3] = c & 0xff;
+        new_password[password_part+2] = (c >> 8) & 0xff;
+        new_password[password_part+1] = (c >> 16) & 0xff;
+        new_password[password_part+0] = (c >> 24) & 0xff;
+        password_part +=4;
+      }
+
+      if (password_part > 20){
+        password_part = -1;
+        Serial.print("Password found:\n");
+        for (int i=0; i<20; i++){
+          Serial.print(((uint8_t*)new_password)[i], HEX);
+          Serial.print(" ");
+        }
+        uint16_t crc = CalculateCRC16(0x0, new_password, 18);
+        Serial.print("\nCalculated crc: ");
+        Serial.println(crc, HEX);
+
+        if (crc == (new_password[18]*0x100 + new_password[19])){
+          Serial.print("CRC match!");
+        } else {
+          Serial.print("CRC fail!");
+        }
+
+      }
+
+  }
+
+#endif
+
 }
