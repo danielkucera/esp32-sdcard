@@ -3,6 +3,15 @@
 
 // note: https://forum.arduino.cc/t/some-success-with-writecid/66231/50
 
+/*  Wiring:
+
+CHIP_SELECT=1 - DAT3 (1)
+MISO=0 - DAT0 (7)
+MOSI=3 - CMD (2)
+SCK=2  - CLK (5)
+
+*/
+
 // set up variables using the SD utility library functions:
 Sd2Card card;
 SdVolume volume;
@@ -352,12 +361,10 @@ void watch_password(){
   Serial.println("Waiting for startbit");
 
 #ifdef WATCH_ENABLE
-  #define PIO_RX_PIN 16
-
   pio = pio0;
   sm = 0;
   uint offset = pio_add_program(pio, &sd_rx_program);
-  sd_rx_program_init(pio, sm, offset, PIO_RX_PIN);
+  sd_rx_program_init(pio, sm, offset, MISO, SCK);
 #endif
 
 /*
@@ -441,7 +448,8 @@ void loop(void) {
         move_password();
         break;
       default:
-        Serial.println("Unknown command");
+        Serial.println("Unknown command: card_[i]nit, [l]ock, [u]nlock, show_[c]id, [d]elete_devid, "
+        "[p]rint_password, [s]et_password, list_[f]iles, [w]atch_password, [m]ove_password");
     }
   }
 

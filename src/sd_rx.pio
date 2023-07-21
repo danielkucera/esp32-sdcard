@@ -1,19 +1,18 @@
 .program sd_rx
 
 startbit:
-    wait 0 gpio 18
-    wait 1 gpio 18
+    wait 0 gpio 2
+    wait 1 gpio 2
     jmp pin startbit
 
     set y, 5
 wordloop:
     set x, 31            ; Preload bit counter, delay until eye of first data bit
 bitloop:                ; Loop 8 times
-    wait 0 gpio 18
-    wait 1 gpio 18
+    wait 0 gpio 2
+    wait 1 gpio 2
     in pins, 1          ; Sample data
     jmp x-- bitloop     ; Each iteration is 8 cycles
-    //push
     jmp y-- wordloop     ; Each iteration is 8 cycles
 
 
@@ -21,22 +20,16 @@ bitloop:                ; Loop 8 times
 #include "hardware/clocks.h"
 #include "hardware/gpio.h"
 
-static inline void sd_rx_program_init(PIO pio, uint sm, uint offset, uint pin) {
-    pio_sm_set_consecutive_pindirs(pio, sm, 16, 1, false);
-    
-    //pio_gpio_init(pio, pin);
-    //gpio_pull_up(pin);
+static inline void sd_rx_program_init(PIO pio, uint sm, uint offset, uint pin, uint clk) {
+    pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, false);
 
     pio_sm_config c = sd_rx_program_get_default_config(offset);
-    sm_config_set_in_pins(&c, 16); // for WAIT, IN
-    sm_config_set_jmp_pin(&c, 16);
+    sm_config_set_in_pins(&c, pin); // for WAIT, IN
+    sm_config_set_jmp_pin(&c, pin);
 
-    // Shift to right, autopush enabled
     sm_config_set_in_shift(&c, false, true, 32);
-//    sm_config_set_in_shift(&c, true, false, 8);
     sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_RX);
-    // SM transmits 1 bit per 8 execution cycles.
-    //float div = (float)clock_get_hz(clk_sys) / 10*000*000;
+    // let's go crazy fast:
     float div = (float)2;
     sm_config_set_clkdiv(&c, div);
     
