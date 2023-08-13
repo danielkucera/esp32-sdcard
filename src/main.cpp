@@ -79,6 +79,7 @@ void setup() {
     ; // wait for serial port to connect. Needed for native USB port only
   }
   */
+  help();
 }
 
 void init(){
@@ -322,6 +323,19 @@ void set_password(){
   print_password();
 }
 
+void help(void) {
+  Serial.println("Command");
+  Serial.println("i: open the SD Card (first step)");
+  Serial.println("l: lock the SD Card with the current passwort");
+  Serial.println("u: unlock the SD Card with the current passwort");
+  Serial.println("c: show the CID from the SD Card");
+  Serial.println("d: delete the deviceid from the SD");
+  Serial.println("p: print the current password");
+  Serial.println("s: set a new password");
+  Serial.println("f: print all file name");
+  Serial.println("h: print this help");
+}
+
 void loop(void) {
   if (Serial.available() > 0) {
     int cmd = Serial.read();
@@ -351,8 +365,12 @@ void loop(void) {
       case 'f':
         list_files();
         break;
+      case 'h':
+        help();
+        break;
       default:
         Serial.println("Unknown command");
+        help();
     }
   }
 }
