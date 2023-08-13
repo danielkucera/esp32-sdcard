@@ -330,8 +330,8 @@ void help(void) {
   Serial.println("u: unlock the SD Card with the current passwort");
   Serial.println("c: show the CID from the SD Card");
   Serial.println("d: delete the deviceid from the SD");
-  Serial.println("p: print the current passwort");
-  Serial.println("s: set a new passwort");
+  Serial.println("p: print the current password");
+  Serial.println("s: set a new password");
   Serial.println("f: print all file name");
   Serial.println("h: print this help");
 }
