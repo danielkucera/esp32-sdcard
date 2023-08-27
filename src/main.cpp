@@ -326,8 +326,8 @@ void set_password(){
 void help(void) {
   Serial.println("Command");
   Serial.println("i: open the SD Card (first step)");
-  Serial.println("l: lock the SD Card with the current passwort");
-  Serial.println("u: unlock the SD Card with the current passwort");
+  Serial.println("l: lock the SD Card with the current password");
+  Serial.println("u: unlock the SD Card with the current password");
   Serial.println("c: show the CID from the SD Card");
   Serial.println("d: delete the deviceid from the SD");
   Serial.println("p: print the current password");
