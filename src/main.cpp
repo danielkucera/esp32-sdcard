@@ -12,6 +12,8 @@ SCK=2  - CLK (5)
 
 */
 
+#define CARD_VCC 29
+
 // set up variables using the SD utility library functions:
 Sd2Card card;
 SdVolume volume;
@@ -101,6 +103,8 @@ void printDirectory(File dir, int numTabs) {
 void card_init(){
   int ret;
   Serial.print("\nInitializing SD card...");
+
+  digitalWrite(CARD_VCC, 0);
 
   pinMode(CHIP_SELECT, OUTPUT);
 
@@ -346,6 +350,8 @@ void set_password(){
 void watch_password(){
   SPI.end();
 
+  digitalWrite(CARD_VCC, 1);
+
   pinMode(MOSI, INPUT);
   digitalWrite(MOSI, 0);
   
@@ -399,6 +405,9 @@ void watch_password(){
 void setup() {
   // Open serial communications and wait for port to open:
   Serial.begin(115200);
+
+  pinMode(CARD_VCC, OUTPUT);
+  digitalWrite(CARD_VCC, 1);
 
   /*
   while (!Serial) {
