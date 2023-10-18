@@ -222,6 +222,15 @@ void lock(){
   Serial.println(ret);
 }
 
+void erase(){
+  int ret;
+  int flags = ERASE;
+
+  ret = card.lockUnlockCard(flags, 16, password);
+
+  Serial.println(ret);
+}
+
 void delete_devid(){
   dir_t p;
 
@@ -419,6 +428,7 @@ watch_password();
 
 void move_password(){
   memcpy(password, new_password+2, 16);
+  Serial.println("password moved");
 }
 
 void loop(void) {
@@ -434,6 +444,9 @@ void loop(void) {
         break;
       case 'u':
         unlock();
+        break;
+      case 'e':
+        erase();
         break;
       case 'c':
         show_cid();
@@ -457,7 +470,7 @@ void loop(void) {
         move_password();
         break;
       default:
-        Serial.println("Unknown command: card_[i]nit, [l]ock, [u]nlock, show_[c]id, [d]elete_devid, "
+        Serial.println("Unknown command: card_[i]nit, [l]ock, [u]nlock, [e]rase, show_[c]id, [d]elete_devid, "
         "[p]rint_password, [s]et_password, list_[f]iles, [w]atch_password, [m]ove_password");
     }
   }
